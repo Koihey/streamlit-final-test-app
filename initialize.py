@@ -6,21 +6,26 @@
 # ライブラリの読み込み
 ############################################################
 import os
-from dotenv import load_dotenv
 import streamlit as st
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.schema import HumanMessage
-from langchain_openai import ChatOpenAI
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 import constants as ct
 
+# dotenvの安全な読み込み
+try:
+    from dotenv import load_dotenv
+    if os.path.exists('.env'):
+        load_dotenv()
+except ImportError:
+    pass
 
-############################################################
-# 設定関連
-############################################################
-# 「.env」ファイルで定義した環境変数の読み込み
-load_dotenv()
+# LangChainライブラリの安全なインポート
+try:
+    from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langchain.schema import HumanMessage
+    from langchain_openai import ChatOpenAI
+    from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+    from langchain.chains.combine_documents import create_stuff_documents_chain
+except ImportError as e:
+    st.error(f"LangChainライブラリのインポートに失敗しました: {e}")
 
 
 ############################################################
@@ -114,3 +119,21 @@ def get_llm_response(chat_message):
     st.session_state.chat_history.extend([HumanMessage(content=chat_message), llm_response["answer"]])
 
     return llm_response
+
+
+def initialize():
+    """
+    アプリケーションの初期化処理
+    
+    アプリケーション起動時に必要な初期設定やセットアップを行う
+    """
+    # セッションステートの初期化
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    if "mode" not in st.session_state:
+        st.session_state.mode = ct.ANSWER_MODE_1  # デフォルトモードを設定
+    
+    # その他の初期化処理をここに追加
+    # 例：データベース接続、設定ファイルの読み込み等
+    pass

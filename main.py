@@ -15,14 +15,21 @@ if os.path.exists('.env'):
 import logging
 # streamlitアプリの表示を担当するモジュール
 import streamlit as st
-# （自作）画面表示以外の様々な関数が定義されているモジュール
-import utils
-# （自作）アプリ起動時に実行される初期化処理が記述された関数
-from initialize import initialize
-# （自作）画面表示系の関数が定義されているモジュール
-import components as cn
 # （自作）変数（定数）がまとめて定義・管理されているモジュール
 import constants as ct
+# （自作）画面表示系の関数が定義されているモジュール
+import components as cn
+
+# （自作）その他のモジュールの安全なインポート
+try:
+    # （自作）画面表示以外の様々な関数が定義されているモジュール
+    import utils
+    # （自作）アプリ起動時に実行される初期化処理が記述された関数
+    from initialize import initialize
+    MODULES_AVAILABLE = True
+except ImportError as e:
+    MODULES_AVAILABLE = False
+    st.error(f"必要なモジュールのインポートに失敗しました: {e}")
 
 
 ############################################################
@@ -40,6 +47,10 @@ logger = logging.getLogger(ct.LOGGER_NAME)
 ############################################################
 # 3. 初期化処理
 ############################################################
+if not MODULES_AVAILABLE:
+    st.error("必要なモジュールがインポートできないため、アプリケーションを起動できません。", icon=":material/error:")
+    st.stop()
+
 try:
     # 初期化処理（「initialize.py」の「initialize」関数を実行）
     initialize()
@@ -47,7 +58,7 @@ except Exception as e:
     # エラーログの出力
     logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n{e}")
     # エラーメッセージの画面表示
-    st.error(utils.build_error_message(ct.INITIALIZE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
+    st.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n詳細: {e}", icon=ct.ERROR_ICON)
     # 後続の処理を中断
     st.stop()
 

@@ -5,8 +5,18 @@
 ############################################################
 # ライブラリの読み込み
 ############################################################
-from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
-from langchain_community.document_loaders.csv_loader import CSVLoader
+# LangChainライブラリの安全なインポート
+try:
+    from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
+    from langchain_community.document_loaders.csv_loader import CSVLoader
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    # LangChainがない場合のダミー値
+    PyMuPDFLoader = None
+    Docx2txtLoader = None
+    TextLoader = None
+    CSVLoader = None
 
 
 ############################################################

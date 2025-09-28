@@ -6,21 +6,26 @@
 # ライブラリの読み込み
 ############################################################
 import os
-from dotenv import load_dotenv
 import streamlit as st
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.schema import HumanMessage
-from langchain_openai import ChatOpenAI
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 import constants as ct
 
+# dotenvの安全な読み込み
+try:
+    from dotenv import load_dotenv
+    if os.path.exists('.env'):
+        load_dotenv()
+except ImportError:
+    pass
 
-############################################################
-# 設定関連
-############################################################
-# 「.env」ファイルで定義した環境変数の読み込み
-load_dotenv()
+# LangChainライブラリの安全なインポート
+try:
+    from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langchain.schema import HumanMessage
+    from langchain_openai import ChatOpenAI
+    from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+    from langchain.chains.combine_documents import create_stuff_documents_chain
+except ImportError as e:
+    st.error(f"LangChainライブラリのインポートに失敗しました: {e}")
 
 
 ############################################################
