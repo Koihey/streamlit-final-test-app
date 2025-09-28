@@ -27,7 +27,16 @@ def custom_csv_loader(path):
     """社員名簿CSV専用のカスタムローダー - 部署ごとにグループ化"""
     try:
         import pandas as pd
-        from langchain_core.documents import Document
+        
+        # LangChain Documentクラスの安全なインポート
+        if LANGCHAIN_AVAILABLE:
+            from langchain_core.documents import Document
+        else:
+            # LangChainが利用できない場合のシンプルなDocumentクラス
+            class Document:
+                def __init__(self, page_content, metadata=None):
+                    self.page_content = page_content
+                    self.metadata = metadata or {}
         
         # CSVファイルを読み込み
         df = pd.read_csv(path, encoding='utf-8-sig')  # BOM対応
@@ -48,19 +57,34 @@ def custom_csv_loader(path):
         grouped = df.groupby('部署')
         
         for dept_name, dept_group in grouped:
-            dept_text = f"部署: {dept_name}\n\n"
+            # 部署の基本情報
+            dept_text = f"部署: {dept_name}\n"
+            dept_text += f"部署名: {dept_name}\n"
+            dept_text += f"所属人数: {len(dept_group)}名\n\n"
+            
+            # 従業員一覧の見出し
+            dept_text += f"【{dept_name}の従業員一覧】\n\n"
             
             # 各従業員の情報を追加
-            for _, row in dept_group.iterrows():
-                employee_info = ""
+            for i, (_, row) in enumerate(dept_group.iterrows(), 1):
+                dept_text += f"《従業員{i}》\n"
                 for col in df.columns:
                     if pd.notna(row[col]):  # NaNでない値のみ追加
-                        employee_info += f"{col}: {row[col]}\n"
-                employee_info += "---\n"
-                dept_text += employee_info
+                        dept_text += f"{col}: {row[col]}\n"
+                dept_text += "\n---\n\n"
             
-            # 検索用のメタデータも追加
-            dept_text += f"\n{dept_name}には{len(dept_group)}名の従業員が所属しています。"
+            # 検索用の追加情報
+            dept_text += f"この部署（{dept_name}）には合計{len(dept_group)}名の従業員が所属しています。\n"
+            
+            # 役職情報の追加
+            if '役職' in df.columns:
+                positions = dept_group['役職'].value_counts()
+                dept_text += f"役職構成: "
+                position_list = []
+                for pos, count in positions.items():
+                    if pd.notna(pos):
+                        position_list.append(f"{pos}({count}名)")
+                dept_text += ", ".join(position_list) + "\n"
             
             # ドキュメントオブジェクトを作成
             doc = Document(
@@ -77,7 +101,7 @@ def custom_csv_loader(path):
         return documents
         
     except Exception as e:
-        # エラーログは必要最小限に
+        # エラーの場合は空のリストを返す
         return []
 
 
@@ -132,7 +156,28 @@ def get_csv_loader(path):
     if "社員名簿.csv" in path:
         return custom_csv_loader(path)
     else:
-        return CSVLoader(path, encoding="utf-8").load() if CSVLoader else []
+        if LANGCHAIN_AVAILABLE and CSVLoader:
+            return CSVLoader(path, encoding="utf-8").load()
+        else:
+            # フォールバック処理：pandasで読み込んでシンプルなドキュメントを作成
+            try:
+                import pandas as pd
+                df = pd.read_csv(path, encoding='utf-8-sig')
+                content = df.to_string(index=False)
+                
+                # シンプルなDocumentクラス
+                class Document:
+                    def __init__(self, page_content, metadata=None):
+                        self.page_content = page_content
+                        self.metadata = metadata or {}
+                
+                doc = Document(
+                    page_content=content,
+                    metadata={"source": path, "type": "csv"}
+                )
+                return [doc]
+            except:
+                return []
 
 SUPPORTED_EXTENSIONS = {
     ".pdf": PyMuPDFLoader,
@@ -148,7 +193,18 @@ WEB_URL_LOAD_TARGETS = [
 # ==========================================
 # プロンプトテンプレート
 # ==========================================
-SYSTEM_PROMPT_CREATE_INDEPENDENT_TEXT = "会話履歴と最新の入力をもとに、会話履歴なしでも理解できる独立した入力テキストを生成してください。"
+SYSTEM_PROMPT_CREATE_INDEPENDENT_TEXT = """
+会話履歴と最新の入力をもとに、会話履歴なしでも理解できる独立した入力テキストを生成してください。
+
+特に以下の点に注意してください：
+- 部署名、従業員情報、社員データに関する質問の場合は、具体的な検索用語を含めてください
+- 「人事部」「従業員」「社員」「スタッフ」などのキーワードを保持してください
+- 検索対象を明確に示すような表現に変換してください
+
+例：
+- 入力「人事部の従業員情報を教えて」→ 出力「人事部に所属している従業員の一覧情報と詳細を教えてください」
+- 入力「マーケティング部のスタッフは？」→ 出力「マーケティング部の社員・従業員の情報を教えてください」
+"""
 
 SYSTEM_PROMPT_DOC_SEARCH = """
     あなたは社内の文書検索アシスタントです。
@@ -173,8 +229,10 @@ SYSTEM_PROMPT_INQUIRY = """
     4. できる限り詳細に、マークダウン記法を使って回答してください。
     5. マークダウン記法で回答する際にhタグの見出しを使う場合、最も大きい見出しをh3としてください。
     6. 複雑な質問の場合、各項目についてそれぞれ詳細に回答してください。
-    7. 必要と判断した場合は、以下の文脈に基づかずとも、一般的な情報を回答してください。
+    7. 従業員情報、部署情報、社員データに関する質問の場合は、文脈にある情報を積極的に活用して回答してください。
+    8. 部署名、従業員名、役職などの検索では、部分的な一致でも関連性があると判断してください。
 
+    【文脈】
     {context}
 """
 
