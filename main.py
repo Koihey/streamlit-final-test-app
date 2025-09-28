@@ -90,10 +90,8 @@ try:
 except Exception as e:
     # エラーログの出力
     logger.error(f"{ct.CONVERSATION_LOG_ERROR_MESSAGE}\n{e}")
-    # エラーメッセージの画面表示
-    st.error(utils.build_error_message(ct.CONVERSATION_LOG_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-    # 後続の処理を中断
-    st.stop()
+    # エラーメッセージの表示（アプリを停止しない）
+    st.error(f"{ct.CONVERSATION_LOG_ERROR_MESSAGE} このエラーが繰り返し発生する場合は、管理者にお問い合わせください。", icon=ct.ERROR_ICON)
 
 
 ############################################################
@@ -129,8 +127,8 @@ if chat_message:
         except Exception as e:
             # エラーログの出力
             logger.error(f"{ct.GET_LLM_RESPONSE_ERROR_MESSAGE}\n{e}")
-            # エラーメッセージの画面表示
-            st.error(utils.build_error_message(ct.GET_LLM_RESPONSE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
+            # エラーメッセージの表示
+            st.error(f"{ct.GET_LLM_RESPONSE_ERROR_MESSAGE} このエラーが繰り返し発生する場合は、管理者にお問い合わせください。", icon=ct.ERROR_ICON)
             # 後続の処理を中断
             st.stop()
     
@@ -158,8 +156,8 @@ if chat_message:
         except Exception as e:
             # エラーログの出力
             logger.error(f"{ct.DISP_ANSWER_ERROR_MESSAGE}\n{e}")
-            # エラーメッセージの画面表示
-            st.error(utils.build_error_message(ct.DISP_ANSWER_ERROR_MESSAGE), icon=ct.ERROR_ICON)
+            # エラーメッセージの表示
+            st.error(f"{ct.DISP_ANSWER_ERROR_MESSAGE} このエラーが繰り返し発生する場合は、管理者にお問い合わせください。", icon=ct.ERROR_ICON)
             # 後続の処理を中断
             st.stop()
 

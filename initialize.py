@@ -131,8 +131,24 @@ def initialize():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
     if "mode" not in st.session_state:
         st.session_state.mode = ct.ANSWER_MODE_1  # デフォルトモードを設定
+    
+    # LangChainライブラリが利用できない場合の初期設定
+    try:
+        # LangChainライブラリのテストインポート
+        from langchain.schema import HumanMessage
+    except ImportError:
+        # LangChainが利用できない場合のフラグを設定
+        if "langchain_available" not in st.session_state:
+            st.session_state.langchain_available = False
+            st.warning("LangChainライブラリが利用できません。基本的な機能のみで動作します。")
+    else:
+        if "langchain_available" not in st.session_state:
+            st.session_state.langchain_available = True
     
     # その他の初期化処理をここに追加
     # 例：データベース接続、設定ファイルの読み込み等
