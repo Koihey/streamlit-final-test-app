@@ -186,19 +186,16 @@ def initialize():
                                 loader = ct.PyMuPDFLoader(file_path)
                                 docs = loader.load()
                                 documents.extend(docs)
-                                st.write(f"✅ PDFファイルを読み込み: {file}")
                                 
                             elif file_ext == ".docx" and ct.Docx2txtLoader:
                                 loader = ct.Docx2txtLoader(file_path)
                                 docs = loader.load()
                                 documents.extend(docs)
-                                st.write(f"✅ Wordファイルを読み込み: {file}")
                                 
                             elif file_ext == ".txt" and ct.TextLoader:
                                 loader = ct.TextLoader(file_path, encoding="utf-8")
                                 docs = loader.load()
                                 documents.extend(docs)
-                                st.write(f"✅ テキストファイルを読み込み: {file}")
                                 
                             elif file_ext == ".csv":
                                 if "社員名簿.csv" in file:
@@ -206,28 +203,23 @@ def initialize():
                                     employee_docs = ct.custom_csv_loader(file_path)
                                     if employee_docs:
                                         documents.extend(employee_docs)
-                                        st.write(f"✅ 社員名簿CSVファイルを部署ごとに統合処理: {file}")
                                 elif ct.CSVLoader:
                                     # 通常のCSVファイル処理
                                     loader = ct.CSVLoader(file_path, encoding="utf-8")
                                     docs = loader.load()
                                     documents.extend(docs)
-                                    st.write(f"✅ CSVファイルを読み込み: {file}")
                                     
                         except Exception as e:
                             st.warning(f"⚠️ ファイル読み込みエラー {file}: {e}")
                             continue
                 
                 if documents:
-                    st.info(f"合計 {len(documents)} 件のドキュメントを読み込みました。")
-                    
                     # テキスト分割
                     text_splitter = RecursiveCharacterTextSplitter(
                         chunk_size=ct.RAG_CHUNK_SIZE,
                         chunk_overlap=ct.RAG_CHUNK_OVERLAP
                     )
                     texts = text_splitter.split_documents(documents)
-                    st.info(f"テキストを {len(texts)} 個のチャンクに分割しました。")
                     
                     # エンベディングとベクターストアの作成
                     embeddings = OpenAIEmbeddings()
@@ -237,14 +229,10 @@ def initialize():
                     st.session_state.retriever = vectorstore.as_retriever(
                         search_kwargs={"k": ct.RAG_TOP_K}
                     )
-                    
-                    st.success(f"✅ RAGシステムが正常に初期化されました。取得ドキュメント数: {ct.RAG_TOP_K}")
                 else:
-                    st.error("❌ ドキュメントが読み込めませんでした。")
                     st.session_state.retriever = None
             else:
-                st.warning(f"データフォルダ '{ct.RAG_TOP_FOLDER_PATH}' が見つかりません。")
-                # ダミーのretrieverを設定
+                # データフォルダが見つからない場合のダミーretriever設定
                 st.session_state.retriever = None
         except Exception as e:
             st.error(f"retrieverの初期化に失敗しました: {e}")

@@ -29,15 +29,11 @@ def custom_csv_loader(path):
         import pandas as pd
         from langchain_core.documents import Document
         
-        print(f"📊 CSVファイルを読み込み中: {path}")
-        
         # CSVファイルを読み込み
         df = pd.read_csv(path, encoding='utf-8-sig')  # BOM対応
-        print(f"✅ CSV読み込み完了: {len(df)}行のデータ")
         
         # 部署列の確認
         if '部署' not in df.columns:
-            print(f"⚠️ '部署'列が見つかりません。利用可能な列: {list(df.columns)}")
             # 部署列がない場合は全体を1つのドキュメントとして処理
             text = df.to_string(index=False)
             doc = Document(
@@ -50,7 +46,6 @@ def custom_csv_loader(path):
         
         # 部署ごとにグループ化
         grouped = df.groupby('部署')
-        print(f"📈 {len(grouped)}個の部署でグループ化")
         
         for dept_name, dept_group in grouped:
             dept_text = f"部署: {dept_name}\n\n"
@@ -78,15 +73,11 @@ def custom_csv_loader(path):
                 }
             )
             documents.append(doc)
-            print(f"✅ 部署「{dept_name}」のドキュメント作成完了（{len(dept_group)}名）")
         
-        print(f"📊 CSV処理完了: {len(documents)}個のドキュメント生成")
         return documents
         
     except Exception as e:
-        print(f"⚠️ CSVファイル {path} の読み込みでエラーが発生: {e}")
-        import traceback
-        traceback.print_exc()
+        # エラーログは必要最小限に
         return []
 
 
