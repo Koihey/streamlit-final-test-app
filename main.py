@@ -7,6 +7,7 @@
 ############################################################
 # 「.env」ファイルから環境変数を読み込むための関数
 from dotenv import load_dotenv
+load_dotenv()
 # ログ出力を行うためのモジュール
 import logging
 # streamlitアプリの表示を担当するモジュール
