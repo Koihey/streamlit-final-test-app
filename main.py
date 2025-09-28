@@ -7,7 +7,10 @@
 ############################################################
 # 「.env」ファイルから環境変数を読み込むための関数
 import dotenv
-dotenv.load_dotenv()
+import os
+# .envファイルが存在する場合のみ読み込み
+if os.path.exists('.env'):
+    dotenv.load_dotenv()
 # ログ出力を行うためのモジュール
 import logging
 # streamlitアプリの表示を担当するモジュール
