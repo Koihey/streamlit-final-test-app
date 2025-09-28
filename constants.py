@@ -59,6 +59,9 @@ TEMPERATURE = 0.5
 RAG_TOP_FOLDER_PATH = "./data"
 # ベクターストアから取得する関連ドキュメントの数
 RAG_TOP_K = 5
+# テキスト分割の設定
+RAG_CHUNK_SIZE = 1000
+RAG_CHUNK_OVERLAP = 200
 SUPPORTED_EXTENSIONS = {
     ".pdf": PyMuPDFLoader,
     ".docx": Docx2txtLoader,

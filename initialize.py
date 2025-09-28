@@ -183,8 +183,8 @@ def initialize():
                 
                 # テキスト分割
                 text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=1000,
-                    chunk_overlap=200
+                    chunk_size=ct.RAG_CHUNK_SIZE,
+                    chunk_overlap=ct.RAG_CHUNK_OVERLAP
                 )
                 texts = text_splitter.split_documents(documents)
                 
