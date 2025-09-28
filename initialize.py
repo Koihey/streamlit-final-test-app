@@ -168,52 +168,80 @@ def initialize():
             from langchain_community.document_loaders import DirectoryLoader
             from langchain.text_splitter import RecursiveCharacterTextSplitter
             import os
+            import glob
             
             # ドキュメントローダーの設定
             if os.path.exists(ct.RAG_TOP_FOLDER_PATH):
-                # 通常のドキュメントを読み込み
-                loader = DirectoryLoader(
-                    ct.RAG_TOP_FOLDER_PATH,
-                    glob="**/*",
-                    loader_cls=ct.PyMuPDFLoader if ct.PyMuPDFLoader else None,
-                    show_progress=True
-                )
+                documents = []
                 
-                # ドキュメントの読み込み
-                documents = loader.load()
+                # dataフォルダ内の全ファイルを再帰的に検索
+                for root, dirs, files in os.walk(ct.RAG_TOP_FOLDER_PATH):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        file_ext = os.path.splitext(file)[1].lower()
+                        
+                        try:
+                            # 拡張子に基づいてドキュメントをロード
+                            if file_ext == ".pdf" and ct.PyMuPDFLoader:
+                                loader = ct.PyMuPDFLoader(file_path)
+                                docs = loader.load()
+                                documents.extend(docs)
+                                st.write(f"✅ PDFファイルを読み込み: {file}")
+                                
+                            elif file_ext == ".docx" and ct.Docx2txtLoader:
+                                loader = ct.Docx2txtLoader(file_path)
+                                docs = loader.load()
+                                documents.extend(docs)
+                                st.write(f"✅ Wordファイルを読み込み: {file}")
+                                
+                            elif file_ext == ".txt" and ct.TextLoader:
+                                loader = ct.TextLoader(file_path, encoding="utf-8")
+                                docs = loader.load()
+                                documents.extend(docs)
+                                st.write(f"✅ テキストファイルを読み込み: {file}")
+                                
+                            elif file_ext == ".csv":
+                                if "社員名簿.csv" in file:
+                                    # 社員名簿CSVファイルの特別処理
+                                    employee_docs = ct.custom_csv_loader(file_path)
+                                    if employee_docs:
+                                        documents.extend(employee_docs)
+                                        st.write(f"✅ 社員名簿CSVファイルを部署ごとに統合処理: {file}")
+                                elif ct.CSVLoader:
+                                    # 通常のCSVファイル処理
+                                    loader = ct.CSVLoader(file_path, encoding="utf-8")
+                                    docs = loader.load()
+                                    documents.extend(docs)
+                                    st.write(f"✅ CSVファイルを読み込み: {file}")
+                                    
+                        except Exception as e:
+                            st.warning(f"⚠️ ファイル読み込みエラー {file}: {e}")
+                            continue
                 
-                # 社員名簿CSVファイルの特別処理
-                employee_csv_path = os.path.join(ct.RAG_TOP_FOLDER_PATH, "社員について", "社員名簿.csv")
-                if os.path.exists(employee_csv_path):
-                    try:
-                        # 社員名簿CSVファイルをカスタム処理
-                        employee_docs = ct.custom_csv_loader(employee_csv_path)
-                        if employee_docs:
-                            # 既存のドキュメントから社員名簿.csvを除外
-                            documents = [doc for doc in documents if "社員名簿.csv" not in doc.metadata.get("source", "")]
-                            # カスタム処理したドキュメントを追加
-                            documents.extend(employee_docs)
-                            st.info(f"社員名簿CSVファイルを部署ごとに統合処理しました。")
-                    except Exception as e:
-                        st.warning(f"社員名簿CSVファイルのカスタム処理に失敗しました: {e}")
-                
-                # テキスト分割
-                text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=ct.RAG_CHUNK_SIZE,
-                    chunk_overlap=ct.RAG_CHUNK_OVERLAP
-                )
-                texts = text_splitter.split_documents(documents)
-                
-                # エンベディングとベクターストアの作成
-                embeddings = OpenAIEmbeddings()
-                vectorstore = Chroma.from_documents(texts, embeddings)
-                
-                # retrieverの作成（top_kを5に設定）
-                st.session_state.retriever = vectorstore.as_retriever(
-                    search_kwargs={"k": ct.RAG_TOP_K}
-                )
-                
-                st.success(f"ドキュメントが読み込まれました。取得ドキュメント数: {ct.RAG_TOP_K}")
+                if documents:
+                    st.info(f"合計 {len(documents)} 件のドキュメントを読み込みました。")
+                    
+                    # テキスト分割
+                    text_splitter = RecursiveCharacterTextSplitter(
+                        chunk_size=ct.RAG_CHUNK_SIZE,
+                        chunk_overlap=ct.RAG_CHUNK_OVERLAP
+                    )
+                    texts = text_splitter.split_documents(documents)
+                    st.info(f"テキストを {len(texts)} 個のチャンクに分割しました。")
+                    
+                    # エンベディングとベクターストアの作成
+                    embeddings = OpenAIEmbeddings()
+                    vectorstore = Chroma.from_documents(texts, embeddings)
+                    
+                    # retrieverの作成（top_kを5に設定）
+                    st.session_state.retriever = vectorstore.as_retriever(
+                        search_kwargs={"k": ct.RAG_TOP_K}
+                    )
+                    
+                    st.success(f"✅ RAGシステムが正常に初期化されました。取得ドキュメント数: {ct.RAG_TOP_K}")
+                else:
+                    st.error("❌ ドキュメントが読み込めませんでした。")
+                    st.session_state.retriever = None
             else:
                 st.warning(f"データフォルダ '{ct.RAG_TOP_FOLDER_PATH}' が見つかりません。")
                 # ダミーのretrieverを設定

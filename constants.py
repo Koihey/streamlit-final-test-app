@@ -24,47 +24,48 @@ except ImportError:
 
 
 def custom_csv_loader(path):
-    """
-    社員名簿CSVファイル専用のカスタムローダー
-    部署ごとにグループ化してドキュメントを作成
-    """
-    if not LANGCHAIN_AVAILABLE or pd is None:
-        return []
-    
+    """社員名簿CSV専用のカスタムローダー - 部署ごとにグループ化"""
     try:
-        # CSVファイルを読み込み
-        df = pd.read_csv(path, encoding='utf-8')
+        import pandas as pd
+        from langchain_core.documents import Document
         
-        # 部署ごとにグループ化
-        departments = df.groupby('部署')
+        print(f"📊 CSVファイルを読み込み中: {path}")
+        
+        # CSVファイルを読み込み
+        df = pd.read_csv(path, encoding='utf-8-sig')  # BOM対応
+        print(f"✅ CSV読み込み完了: {len(df)}行のデータ")
+        
+        # 部署列の確認
+        if '部署' not in df.columns:
+            print(f"⚠️ '部署'列が見つかりません。利用可能な列: {list(df.columns)}")
+            # 部署列がない場合は全体を1つのドキュメントとして処理
+            text = df.to_string(index=False)
+            doc = Document(
+                page_content=text,
+                metadata={"source": path, "type": "csv"}
+            )
+            return [doc]
+        
         documents = []
         
-        for dept_name, dept_group in departments:
-            # 部署ごとの情報をまとめたテキストを作成
-            dept_text = f"【{dept_name}の従業員情報】\n\n"
+        # 部署ごとにグループ化
+        grouped = df.groupby('部署')
+        print(f"📈 {len(grouped)}個の部署でグループ化")
+        
+        for dept_name, dept_group in grouped:
+            dept_text = f"部署: {dept_name}\n\n"
             
+            # 各従業員の情報を追加
             for _, row in dept_group.iterrows():
-                employee_info = f"""
-社員ID: {row['社員ID']}
-氏名: {row['氏名（フルネーム）']}
-性別: {row['性別']}
-年齢: {row['年齢']}
-従業員区分: {row['従業員区分']}
-部署: {row['部署']}
-役職: {row['役職']}
-スキルセット: {row['スキルセット']}
-保有資格: {row['保有資格']}
-大学名: {row['大学名']}
-学部・学科: {row['学部・学科']}
-入社日: {row['入社日']}
-メールアドレス: {row['メールアドレス']}
----
-"""
+                employee_info = ""
+                for col in df.columns:
+                    if pd.notna(row[col]):  # NaNでない値のみ追加
+                        employee_info += f"{col}: {row[col]}\n"
+                employee_info += "---\n"
                 dept_text += employee_info
             
             # 検索用のメタデータも追加
             dept_text += f"\n{dept_name}には{len(dept_group)}名の従業員が所属しています。"
-            dept_text += f"\n職種の特徴: {dept_name}は組織の重要な部門として機能しています。"
             
             # ドキュメントオブジェクトを作成
             doc = Document(
@@ -72,15 +73,21 @@ def custom_csv_loader(path):
                 metadata={
                     "source": path,
                     "department": dept_name,
-                    "employee_count": len(dept_group)
+                    "employee_count": len(dept_group),
+                    "type": "csv"
                 }
             )
             documents.append(doc)
+            print(f"✅ 部署「{dept_name}」のドキュメント作成完了（{len(dept_group)}名）")
         
+        print(f"📊 CSV処理完了: {len(documents)}個のドキュメント生成")
         return documents
+        
     except Exception as e:
-        # エラーが発生した場合は従来のCSVLoaderにフォールバック
-        return CSVLoader(path, encoding="utf-8").load() if CSVLoader else []
+        print(f"⚠️ CSVファイル {path} の読み込みでエラーが発生: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 
 ############################################################
