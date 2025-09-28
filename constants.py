@@ -57,35 +57,58 @@ def custom_csv_loader(path):
         grouped = df.groupby('部署')
         
         for dept_name, dept_group in grouped:
-            # 部署の基本情報（検索用キーワードを強化）
+            # 部署の基本情報（検索用キーワードを大幅強化）
             dept_text = f"部署: {dept_name}\n"
             dept_text += f"部署名: {dept_name}\n"
+            dept_text += f"{dept_name}部署\n"
+            dept_text += f"{dept_name}の部署\n"
             dept_text += f"所属人数: {len(dept_group)}名\n"
             dept_text += f"従業員総数: {len(dept_group)}人\n"
-            dept_text += f"スタッフ数: {len(dept_group)}人\n\n"
+            dept_text += f"スタッフ数: {len(dept_group)}人\n"
+            dept_text += f"メンバー数: {len(dept_group)}人\n"
+            dept_text += f"{dept_name}に所属している従業員: {len(dept_group)}名\n"
+            dept_text += f"{dept_name}に所属する従業員情報: {len(dept_group)}名\n"
+            dept_text += f"{dept_name}の従業員一覧: {len(dept_group)}名\n"
+            dept_text += f"{dept_name}所属の社員: {len(dept_group)}名\n\n"
             
-            # 検索用キーワードセクション
-            dept_text += f"【検索キーワード】{dept_name} 従業員 社員 スタッフ メンバー 人事 一覧 リスト 名簿\n\n"
+            # 検索用キーワードセクション（大幅強化）
+            dept_text += f"【検索キーワード】{dept_name} {dept_name}部署 {dept_name}の部署 従業員 社員 スタッフ メンバー 人事 一覧 リスト 名簿 所属 情報 詳細 "
+            dept_text += f"{dept_name}に所属している {dept_name}に所属する {dept_name}の従業員 {dept_name}の社員 {dept_name}のスタッフ "
+            dept_text += f"{dept_name}従業員情報 {dept_name}社員情報 {dept_name}スタッフ情報 {dept_name}メンバー情報 "
+            dept_text += f"一覧化 リスト化 教えて 紹介 表示\n\n"
+            
+            # 各部署専用の追加検索キーワード
+            dept_text += f"【{dept_name}専用検索強化】{dept_name}に所属している従業員情報を一覧化 {dept_name}の従業員情報 {dept_name}従業員一覧 "
+            dept_text += f"{dept_name}社員一覧 {dept_name}スタッフ一覧 {dept_name}メンバー一覧 {dept_name}の社員情報 {dept_name}のスタッフ情報 "
+            dept_text += f"{dept_name}に所属する従業員 {dept_name}に所属している社員 {dept_name}に所属しているスタッフ "
+            dept_text += f"{dept_name}の人員 {dept_name}の職員 {dept_name}の構成員 {dept_name}チーム {dept_name}組織\n\n"
             
             # 従業員名簿一覧（簡潔版・4名以上表示保証）
-            dept_text += f"【{dept_name}従業員名簿・一覧】\n"
+            dept_text += f"【{dept_name}従業員名簿・一覧】（全{len(dept_group)}名）\n"
+            dept_text += f"{dept_name}に所属している従業員の一覧は以下の通りです：\n"
             for i, (_, row) in enumerate(dept_group.iterrows(), 1):
                 name = row['氏名（フルネーム）'] if pd.notna(row['氏名（フルネーム）']) else 'N/A'
                 position = row['役職'] if pd.notna(row['役職']) else 'N/A'
                 emp_id = row['社員ID'] if pd.notna(row['社員ID']) else 'N/A'
-                dept_text += f"{i}. 【従業員{i}】{name} - 役職: {position} - ID: {emp_id}\n"
-            dept_text += f"\n上記{len(dept_group)}名が{dept_name}の全従業員です。\n\n"
+                age = row['年齢'] if pd.notna(row['年齢']) else 'N/A'
+                dept_text += f"{i}. 【従業員{i}】{name} - 役職: {position} - 年齢: {age}歳 - ID: {emp_id}\n"
+            dept_text += f"\n上記{len(dept_group)}名が{dept_name}に所属している全従業員です。\n"
+            dept_text += f"{dept_name}の従業員情報は合計{len(dept_group)}名分あります。\n"
+            dept_text += f"{dept_name}に所属する社員は{len(dept_group)}人です。\n\n"
             
             # 詳細従業員情報
-            dept_text += f"【{dept_name}の詳細従業員情報一覧（全{len(dept_group)}名）】\n\n"
+            dept_text += f"【{dept_name}の詳細従業員情報一覧（全{len(dept_group)}名）】\n"
+            dept_text += f"{dept_name}に所属している各従業員の詳細情報：\n\n"
 
             # 各従業員の情報を追加
             for i, (_, row) in enumerate(dept_group.iterrows(), 1):
-                dept_text += f"■ 従業員{i} - {row['氏名（フルネーム）']}\n"
+                name = row['氏名（フルネーム）'] if pd.notna(row['氏名（フルネーム）']) else 'N/A'
+                dept_text += f"■ 従業員{i} - {name}（{dept_name}所属）\n"
                 for col in df.columns:
                     if pd.notna(row[col]):  # NaNでない値のみ追加
                         dept_text += f"  {col}: {row[col]}\n"
                 dept_text += f"  所属部署: {dept_name}\n"
+                dept_text += f"  この従業員は{dept_name}に所属しています。\n"
                 dept_text += "\n---\n\n"
             
             # 検索用の追加情報
@@ -212,13 +235,17 @@ SYSTEM_PROMPT_CREATE_INDEPENDENT_TEXT = """
 会話履歴と最新の入力をもとに、会話履歴なしでも理解できる独立した入力テキストを生成してください。
 
 特に以下の点に注意してください：
-- 部署名、従業員情報、社員データに関する質問の場合は、具体的な検索用語を含めてください
-- 「人事部」「従業員」「社員」「スタッフ」などのキーワードを保持してください
-- 検索対象を明確に示すような表現に変換してください
+- 部署名、従業員情報、社員データに関する質問の場合は、具体的で詳細な検索用語を含めてください
+- 部署名（人事部、営業部、IT部、マーケティング部、経理部、総務部等）を正確に保持してください
+- 「従業員」「社員」「スタッフ」「メンバー」「人員」「職員」「所属」「一覧」などのキーワードを保持・強化してください
+- 検索対象を明確に示し、関連キーワードを追加した表現に変換してください
+- 「一覧化」「リスト化」などの要求では、その旨を明確に含めてください
 
 例：
-- 入力「人事部の従業員情報を教えて」→ 出力「人事部に所属している従業員の一覧情報と詳細を教えてください」
-- 入力「マーケティング部のスタッフは？」→ 出力「マーケティング部の社員・従業員の情報を教えてください」
+- 入力「人事部の従業員情報を教えて」→ 出力「人事部に所属している従業員の一覧情報と詳細、人事部の社員・スタッフ・メンバー情報を教えてください」
+- 入力「営業部に所属している従業員情報を一覧化して」→ 出力「営業部に所属している従業員情報を一覧化、営業部の社員・スタッフ・メンバーの詳細情報をリスト形式で表示してください」
+- 入力「IT部のスタッフは？」→ 出力「IT部に所属する社員・従業員・スタッフ・メンバーの情報を教えてください」
+- 入力「マーケティング部の社員数は？」→ 出力「マーケティング部に所属している社員・従業員・スタッフの人数と一覧情報を教えてください」
 """
 
 SYSTEM_PROMPT_DOC_SEARCH = """
