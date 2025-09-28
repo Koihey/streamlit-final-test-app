@@ -9,6 +9,8 @@
 try:
     from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
     from langchain_community.document_loaders.csv_loader import CSVLoader
+    from langchain_core.documents import Document
+    import pandas as pd
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
@@ -17,6 +19,68 @@ except ImportError:
     Docx2txtLoader = None
     TextLoader = None
     CSVLoader = None
+    Document = None
+    pd = None
+
+
+def custom_csv_loader(path):
+    """
+    社員名簿CSVファイル専用のカスタムローダー
+    部署ごとにグループ化してドキュメントを作成
+    """
+    if not LANGCHAIN_AVAILABLE or pd is None:
+        return []
+    
+    try:
+        # CSVファイルを読み込み
+        df = pd.read_csv(path, encoding='utf-8')
+        
+        # 部署ごとにグループ化
+        departments = df.groupby('部署')
+        documents = []
+        
+        for dept_name, dept_group in departments:
+            # 部署ごとの情報をまとめたテキストを作成
+            dept_text = f"【{dept_name}の従業員情報】\n\n"
+            
+            for _, row in dept_group.iterrows():
+                employee_info = f"""
+社員ID: {row['社員ID']}
+氏名: {row['氏名（フルネーム）']}
+性別: {row['性別']}
+年齢: {row['年齢']}
+従業員区分: {row['従業員区分']}
+部署: {row['部署']}
+役職: {row['役職']}
+スキルセット: {row['スキルセット']}
+保有資格: {row['保有資格']}
+大学名: {row['大学名']}
+学部・学科: {row['学部・学科']}
+入社日: {row['入社日']}
+メールアドレス: {row['メールアドレス']}
+---
+"""
+                dept_text += employee_info
+            
+            # 検索用のメタデータも追加
+            dept_text += f"\n{dept_name}には{len(dept_group)}名の従業員が所属しています。"
+            dept_text += f"\n職種の特徴: {dept_name}は組織の重要な部門として機能しています。"
+            
+            # ドキュメントオブジェクトを作成
+            doc = Document(
+                page_content=dept_text,
+                metadata={
+                    "source": path,
+                    "department": dept_name,
+                    "employee_count": len(dept_group)
+                }
+            )
+            documents.append(doc)
+        
+        return documents
+    except Exception as e:
+        # エラーが発生した場合は従来のCSVLoaderにフォールバック
+        return CSVLoader(path, encoding="utf-8").load() if CSVLoader else []
 
 
 ############################################################
@@ -62,10 +126,20 @@ RAG_TOP_K = 5
 # テキスト分割の設定
 RAG_CHUNK_SIZE = 1000
 RAG_CHUNK_OVERLAP = 200
+def get_csv_loader(path):
+    """
+    CSVファイルに応じて適切なローダーを返す
+    社員名簿.csvの場合はカスタムローダー、それ以外は通常のCSVLoader
+    """
+    if "社員名簿.csv" in path:
+        return custom_csv_loader(path)
+    else:
+        return CSVLoader(path, encoding="utf-8").load() if CSVLoader else []
+
 SUPPORTED_EXTENSIONS = {
     ".pdf": PyMuPDFLoader,
     ".docx": Docx2txtLoader,
-    ".csv": lambda path: CSVLoader(path, encoding="utf-8"),
+    ".csv": get_csv_loader,
     ".txt": lambda path: TextLoader(path, encoding="utf-8")
 }
 WEB_URL_LOAD_TARGETS = [

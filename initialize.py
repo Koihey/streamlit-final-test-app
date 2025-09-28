@@ -171,6 +171,7 @@ def initialize():
             
             # ドキュメントローダーの設定
             if os.path.exists(ct.RAG_TOP_FOLDER_PATH):
+                # 通常のドキュメントを読み込み
                 loader = DirectoryLoader(
                     ct.RAG_TOP_FOLDER_PATH,
                     glob="**/*",
@@ -180,6 +181,21 @@ def initialize():
                 
                 # ドキュメントの読み込み
                 documents = loader.load()
+                
+                # 社員名簿CSVファイルの特別処理
+                employee_csv_path = os.path.join(ct.RAG_TOP_FOLDER_PATH, "社員について", "社員名簿.csv")
+                if os.path.exists(employee_csv_path):
+                    try:
+                        # 社員名簿CSVファイルをカスタム処理
+                        employee_docs = ct.custom_csv_loader(employee_csv_path)
+                        if employee_docs:
+                            # 既存のドキュメントから社員名簿.csvを除外
+                            documents = [doc for doc in documents if "社員名簿.csv" not in doc.metadata.get("source", "")]
+                            # カスタム処理したドキュメントを追加
+                            documents.extend(employee_docs)
+                            st.info(f"社員名簿CSVファイルを部署ごとに統合処理しました。")
+                    except Exception as e:
+                        st.warning(f"社員名簿CSVファイルのカスタム処理に失敗しました: {e}")
                 
                 # テキスト分割
                 text_splitter = RecursiveCharacterTextSplitter(
