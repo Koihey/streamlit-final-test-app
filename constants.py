@@ -57,20 +57,35 @@ def custom_csv_loader(path):
         grouped = df.groupby('部署')
         
         for dept_name, dept_group in grouped:
-            # 部署の基本情報
+            # 部署の基本情報（検索用キーワードを強化）
             dept_text = f"部署: {dept_name}\n"
             dept_text += f"部署名: {dept_name}\n"
-            dept_text += f"所属人数: {len(dept_group)}名\n\n"
+            dept_text += f"所属人数: {len(dept_group)}名\n"
+            dept_text += f"従業員総数: {len(dept_group)}人\n"
+            dept_text += f"スタッフ数: {len(dept_group)}人\n\n"
             
-            # 従業員一覧の見出し
-            dept_text += f"【{dept_name}の従業員一覧】\n\n"
+            # 検索用キーワードセクション
+            dept_text += f"【検索キーワード】{dept_name} 従業員 社員 スタッフ メンバー 人事 一覧 リスト 名簿\n\n"
             
+            # 従業員名簿一覧（簡潔版・4名以上表示保証）
+            dept_text += f"【{dept_name}従業員名簿・一覧】\n"
+            for i, (_, row) in enumerate(dept_group.iterrows(), 1):
+                name = row['氏名（フルネーム）'] if pd.notna(row['氏名（フルネーム）']) else 'N/A'
+                position = row['役職'] if pd.notna(row['役職']) else 'N/A'
+                emp_id = row['社員ID'] if pd.notna(row['社員ID']) else 'N/A'
+                dept_text += f"{i}. 【従業員{i}】{name} - 役職: {position} - ID: {emp_id}\n"
+            dept_text += f"\n上記{len(dept_group)}名が{dept_name}の全従業員です。\n\n"
+            
+            # 詳細従業員情報
+            dept_text += f"【{dept_name}の詳細従業員情報一覧（全{len(dept_group)}名）】\n\n"
+
             # 各従業員の情報を追加
             for i, (_, row) in enumerate(dept_group.iterrows(), 1):
-                dept_text += f"《従業員{i}》\n"
+                dept_text += f"■ 従業員{i} - {row['氏名（フルネーム）']}\n"
                 for col in df.columns:
                     if pd.notna(row[col]):  # NaNでない値のみ追加
-                        dept_text += f"{col}: {row[col]}\n"
+                        dept_text += f"  {col}: {row[col]}\n"
+                dept_text += f"  所属部署: {dept_name}\n"
                 dept_text += "\n---\n\n"
             
             # 検索用の追加情報
@@ -231,6 +246,10 @@ SYSTEM_PROMPT_INQUIRY = """
     6. 複雑な質問の場合、各項目についてそれぞれ詳細に回答してください。
     7. 従業員情報、部署情報、社員データに関する質問の場合は、文脈にある情報を積極的に活用して回答してください。
     8. 部署名、従業員名、役職などの検索では、部分的な一致でも関連性があると判断してください。
+    9. 「一覧化して」「リスト化して」「教えて」などの要求で従業員情報が4名以上ある場合は、必ず4名以上を表示してください。
+    10. 従業員情報の一覧表示では、名前、役職、社員IDを含む形で整理して表示してください。
+    11. 文脈に従業員の詳細情報が複数含まれている場合は、可能な限り多くの従業員情報を含めて回答してください。
+    12. 従業員一覧の要求では、番号付きリスト形式で表示し、各従業員の基本情報を含めてください。
 
     【文脈】
     {context}
