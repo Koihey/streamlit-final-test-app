@@ -74,6 +74,14 @@ def get_llm_response(chat_message):
     Returns:
         LLMからの回答
     """
+    # retrieverが初期化されていない場合の処理
+    if "retriever" not in st.session_state or st.session_state.retriever is None:
+        # ダミーのレスポンスを返す
+        return {
+            "answer": "申し訳ございません、RAGシステムが初期化されていないため、この機能は利用できません。",
+            "context": []
+        }
+    
     # LLMのオブジェクトを用意
     llm = ChatOpenAI(model_name=ct.MODEL, temperature=ct.TEMPERATURE)
 
@@ -141,14 +149,62 @@ def initialize():
     try:
         # LangChainライブラリのテストインポート
         from langchain.schema import HumanMessage
+        langchain_available = True
     except ImportError:
         # LangChainが利用できない場合のフラグを設定
         if "langchain_available" not in st.session_state:
             st.session_state.langchain_available = False
             st.warning("LangChainライブラリが利用できません。基本的な機能のみで動作します。")
+        langchain_available = False
     else:
         if "langchain_available" not in st.session_state:
             st.session_state.langchain_available = True
+    
+    # retrieverの初期化（LangChainが利用できる場合のみ）
+    if langchain_available and "retriever" not in st.session_state:
+        try:
+            from langchain_community.vectorstores import Chroma
+            from langchain_openai import OpenAIEmbeddings
+            from langchain_community.document_loaders import DirectoryLoader
+            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            import os
+            
+            # ドキュメントローダーの設定
+            if os.path.exists(ct.RAG_TOP_FOLDER_PATH):
+                loader = DirectoryLoader(
+                    ct.RAG_TOP_FOLDER_PATH,
+                    glob="**/*",
+                    loader_cls=ct.PyMuPDFLoader if ct.PyMuPDFLoader else None,
+                    show_progress=True
+                )
+                
+                # ドキュメントの読み込み
+                documents = loader.load()
+                
+                # テキスト分割
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200
+                )
+                texts = text_splitter.split_documents(documents)
+                
+                # エンベディングとベクターストアの作成
+                embeddings = OpenAIEmbeddings()
+                vectorstore = Chroma.from_documents(texts, embeddings)
+                
+                # retrieverの作成（top_kを5に設定）
+                st.session_state.retriever = vectorstore.as_retriever(
+                    search_kwargs={"k": ct.RAG_TOP_K}
+                )
+                
+                st.success(f"ドキュメントが読み込まれました。取得ドキュメント数: {ct.RAG_TOP_K}")
+            else:
+                st.warning(f"データフォルダ '{ct.RAG_TOP_FOLDER_PATH}' が見つかりません。")
+                # ダミーのretrieverを設定
+                st.session_state.retriever = None
+        except Exception as e:
+            st.error(f"retrieverの初期化に失敗しました: {e}")
+            st.session_state.retriever = None
     
     # その他の初期化処理をここに追加
     # 例：データベース接続、設定ファイルの読み込み等

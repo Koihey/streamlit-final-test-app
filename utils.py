@@ -74,6 +74,14 @@ def get_llm_response(chat_message):
     Returns:
         LLMからの回答
     """
+    # retrieverが初期化されていない場合の処理
+    if "retriever" not in st.session_state or st.session_state.retriever is None:
+        # ダミーのレスポンスを返す
+        return {
+            "answer": "申し訳ございません、RAGシステムが初期化されていないため、この機能は利用できません。",
+            "context": []
+        }
+    
     # LLMのオブジェクトを用意
     llm = ChatOpenAI(model_name=ct.MODEL, temperature=ct.TEMPERATURE)
 
